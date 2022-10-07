@@ -43,8 +43,12 @@ let contador=0;
 export default () => {
    
     const token=obtenerToken();
-   savingAccount(token,codCliente);
-   currentAccount(token,codCliente);
+  
+    if (token!=false){
+        savingAccount(token,codCliente);
+        currentAccount(token,codCliente);
+    }
+
     contador++;
 
     console.log('Contador='+contador);
@@ -65,16 +69,24 @@ export default () => {
     });
   
     //console.log(loginRes.json('access_token'));
-    check(loginRes, {
+    //valor variable para ver si el check es true o false 
+   let valor= check(loginRes, {
       'Status Request 200 Token ' :(resp)=> resp.status === 200,  
       'Token Exitoso': (resp) => resp.body.includes('access_token')
     });
+    
+    let authHeaders;
+    if (valor==true){
+        authHeaders  = {
+            headers: {
+              Authorization: `Bearer ${loginRes.json('access_token')}`,
+            },
+          };
+    }else{
+        authHeaders=false
+    }
 
-    const authHeaders = {
-        headers: {
-          Authorization: `Bearer ${loginRes.json('access_token')}`,
-        },
-      };
+   
 
     return authHeaders;
 
