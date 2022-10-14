@@ -1,5 +1,16 @@
 import http from 'k6/http';
 import { check, group, sleep } from 'k6';
+import { Trend } from 'k6/metrics';
+
+/*
+export const options = {
+  stages: [
+    { duration: '30s', target: 10 }, // below normal load
+    { duration: '3s', target: 10 },
+    { duration: '5s', target: 0 },
+  ],
+};*/
+
 
 /*
 export const options = {
@@ -35,23 +46,32 @@ export const options = {
   
 const BASE_URL = 'https://bfsmb-staging-bouncer-v2.fassil.com.bo';
 const Base_Url_Atlas='https://bfsmb-staging-atlas-v2.fassil.com.bo'
-const usuario = 'user13846';
+const usuario = 'user71590';
 const contrasenia = '0000';
-const codCliente='1270152';
+const codCliente='23805';
 
 let contador=0;
+
+const myTrend = new Trend('Bouncer');
+const myTrendSaving = new Trend('SavingAccount');
+
 export default () => {
    
-    const token=obtenerToken();
-  
-    if (token!=false){
+    let token='';
+    group('Obtener TOken', function () {
+      token=obtenerToken();
+    });
+
+   if (token!=false){
+      group('Saving Account', function () {
         savingAccount(token,codCliente);
-        currentAccount(token,codCliente);
+       
+      });
+   
     }
 
     contador++;
 
-    console.log('Contador='+contador);
     sleep(1);
   };
 
@@ -66,15 +86,21 @@ export default () => {
         scope:'atlas IdentityServerApi flutter_test',
         client:true,
         deviceDetails:'K6_prueba'
-    });
+    }, {
+      tags: {
+        my_tag: "I'm a tag",
+      }},);
   
+      myTrend.add(Number(loginRes.timings.duration/1000).toFixed(3), { my_tag: "I'm a tag" });
+
     //console.log(loginRes.json('access_token'));
     //valor variable para ver si el check es true o false 
    let valor= check(loginRes, {
-      'Status Request 200 Token ' :(resp)=> resp.status === 200,  
-      'Token Exitoso': (resp) => resp.body.includes('access_token')
-    });
-    
+      'Status Request 200 Token ' :(resp)=> resp.status == 200,  
+      'Token Exitoso': (resp) => resp.body.includes('access_token'),
+    }, { my_tag: "I'm a tag" });
+
+
     let authHeaders;
     if (valor==true){
         authHeaders  = {
@@ -93,9 +119,15 @@ export default () => {
   };
   function savingAccount(token,codigoCliente){
 
-    const myObjects = http.get(`${Base_Url_Atlas}/api/v2/clients/${codigoCliente}/savingAccounts`, token);
+    const myObjects = http.get(`${Base_Url_Atlas}/api/v2/clients/${codigoCliente}/savingAccounts`, token, {
+      tags: {
+        my_tag: "TagSaving",
+      }},);
+      myTrendSaving.add(Number(myObjects.timings.duration/1000).toFixed(3), { my_tag: "TagSaving" });
    // console.log(myObjects.status);
-    check(myObjects, { 'is status 200 Saving': (resp) => resp.status ===200 });
+    check(myObjects, { 'is status 200 Saving': (resp) => resp.status ===200 }, { my_tag: "TagSaving" });
+
+
     //console.log(myObjects);
   };
 function currentAccount(token,codigoCliente){
